@@ -1,55 +1,36 @@
-var easyrtc = require('easyrtc'),
+'use strict';
 
-	Sockets = module.parent.require('./socket.io/index'),
-	ModulesSockets = module.parent.require('./socket.io/modules'),
+const SocketPlugins = require.main.require('./src/socket.io/plugins');
 
-	app,
-	io,
-	rtc;
+const WebRTCPlugin = {};
 
-var WebRTCPlugin = {};
+WebRTCPlugin.init = async ({ router, middleware }) => {
+  const renderAdmin = (req, res) => {
+    res.render('webrtc/admin', {});
+  };
 
-var constants = Object.freeze({
-	'name': 'WebRTC Chat',
-	'admin': {
-		'route': '/webrtc',
-		'icon': 'fa-eye'
-	}
-});
+  router.get('/admin/plugins/webrtc', middleware.admin.buildHeader, renderAdmin);
+  router.get('/api/admin/plugins/webrtc', renderAdmin);
 
-WebRTCPlugin.init = {
-    load: function(expressApp, middleware, controllers) {
-		app = expressApp;
-		io = Sockets.server;
-		function renderAdmin(req, res, next) {
-			res.render('webrtc/admin', {});
-		}
+  SocketPlugins.webrtc = {
+    getConfig: WebRTCPlugin.getConfig,
+  };
+};
 
-		app.get('/admin/webrtc', middleware.admin.buildHeader, renderAdmin);
-		app.get('/api/admin/webrtc', renderAdmin);
+WebRTCPlugin.addAdminNavigation = async (header) => {
+  header.plugins.push({
+    route: '/plugins/webrtc',
+    icon: 'fa-phone',
+    name: 'WebRTC Chat',
+  });
+  return header;
+};
 
-		rtc = easyrtc.listen(app, io);
-		ModulesSockets.chats.webrtc = WebRTCPlugin.sockets;
-    },
-	admin: {
-		"addNavigation": function(custom_header, callback) {
-			custom_header.plugins.push({
-				"route": constants.admin.route,
-				"icon": constants.admin.icon,
-				"name": constants.name
-			});
-
-			callback(null, custom_header);
-		}
-	}
-}
-
-WebRTCPlugin.sockets = {
-	getConfig: function(socket, data, callback) {
-		var config = {};
-		config.running = (rtc !== null);
-		return callback(null, config);
-	}
-}
+WebRTCPlugin.getConfig = async () => {
+  return {
+    running: true,
+    mode: 'nodebb-4.8-compat',
+  };
+};
 
 module.exports = WebRTCPlugin;
